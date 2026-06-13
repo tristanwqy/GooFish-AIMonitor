@@ -1,0 +1,11 @@
+data/
+*.pyc
+__pycache__/
+.env
+.venv/
+*.egg-info/
+.pytest_cache/
+tests/fixtures/*.real.json
+node_modules/
+src/xianyu_crawler/web/static/
+dist/

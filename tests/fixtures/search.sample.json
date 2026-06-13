@@ -1,0 +1,39 @@
+{
+  "api": "mtop.taobao.idlemtopsearch.pc.search",
+  "ret": ["SUCCESS::调用成功"],
+  "data": {
+    "resultInfo": { "hasNextPage": false },
+    "resultList": [
+      {
+        "data": {
+          "item": {
+            "main": {
+              "exContent": {
+                "itemId": "111",
+                "title": "测试 MacBook 99新",
+                "area": "上海",
+                "userNickName": "卖家A",
+                "detailParams": {
+                  "itemId": "111",
+                  "soldPrice": "1234",
+                  "userNick": "卖家A",
+                  "title": "测试 MacBook 99新 详细描述"
+                }
+              },
+              "clickParam": {
+                "args": {
+                  "item_id": "111",
+                  "price": "1234",
+                  "displayPrice": "1234",
+                  "seller_id": "ABC==",
+                  "tag": "freeship/credit-6",
+                  "tagname": "包邮/极好"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

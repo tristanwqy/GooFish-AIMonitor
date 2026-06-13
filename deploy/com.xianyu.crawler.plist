@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  闲鱼 crawler 定时任务 (平衡节奏: 每天 3 次, 时刻带抖动)。
+  使用前把 __PROJECT_DIR__ 替换为本仓库绝对路径, 例如:
+    sed -i '' "s#__PROJECT_DIR__#$PWD#g" deploy/com.xianyu.crawler.plist
+  再:
+    cp deploy/com.xianyu.crawler.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.xianyu.crawler.plist
+  密钥不在此文件; 由 deploy/run.sh 在运行时 source ~/.xianyu.env 注入。
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.xianyu.crawler</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__PROJECT_DIR__/deploy/run.sh</string>
+  </array>
+  <key>WorkingDirectory</key><string>__PROJECT_DIR__</string>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>17</integer></dict>
+    <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>41</integer></dict>
+    <dict><key>Hour</key><integer>20</integer><key>Minute</key><integer>5</integer></dict>
+  </array>
+  <key>StandardOutPath</key><string>__PROJECT_DIR__/data/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>__PROJECT_DIR__/data/launchd.err.log</string>
+  <key>RunAtLoad</key><false/>
+</dict>
+</plist>

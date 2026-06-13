@@ -1,0 +1,12 @@
+.git/
+.venv/
+**/node_modules/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+data/
+docs/
+tests/
+deploy/
+src/xianyu_crawler/web/static/

@@ -1,0 +1,23 @@
+{
+  "api": "mtop.taobao.idle.web.favor.item.list",
+  "ret": ["SUCCESS::调用成功"],
+  "data": {
+    "nextPage": false,
+    "totalCount": 1,
+    "items": [
+      {
+        "id": "222",
+        "title": "测试收藏 iPad 95新",
+        "price": "5000",
+        "originalPrice": "6000",
+        "city": "北京",
+        "area": "海淀区",
+        "province": "北京",
+        "freeShip": true,
+        "userNick": "卖家B",
+        "userId": "u222",
+        "reducePrice": "500.00"
+      }
+    ]
+  }
+}

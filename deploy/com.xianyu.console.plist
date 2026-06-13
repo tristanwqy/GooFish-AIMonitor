@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  常驻控制台(含进程内定时调度)。替换 __PROJECT_DIR__ 后:
+    sed -i '' "s#__PROJECT_DIR__#$PWD#g" deploy/com.xianyu.console.plist
+    chmod +x deploy/serve.sh
+    cp deploy/com.xianyu.console.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.xianyu.console.plist
+  然后浏览器打开 http://127.0.0.1:8000
+  注: 这取代旧的一次性 com.xianyu.crawler.plist(定时已在 serve 进程内)。
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.xianyu.console</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__PROJECT_DIR__/deploy/serve.sh</string>
+  </array>
+  <key>WorkingDirectory</key><string>__PROJECT_DIR__</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>__PROJECT_DIR__/data/console.out.log</string>
+  <key>StandardErrorPath</key><string>__PROJECT_DIR__/data/console.err.log</string>
+</dict>
+</plist>

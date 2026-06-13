@@ -1,0 +1,11 @@
+watches:
+  - name: "iPhone15Pro"
+    keywords: ["iPhone 15 Pro", "苹果15Pro"]
+    price_min: 3000
+    price_max: 5000
+    city: "上海"
+    condition: ["99新", "几乎全新", "全新"]
+    free_shipping: true
+    seller_min_credit: null
+    want_max_per_run: 5
+    enabled: true

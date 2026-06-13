@@ -1,0 +1,12 @@
+services:
+  console:
+    build: .
+    image: xianyu-console:latest
+    container_name: xianyu-console
+    restart: unless-stopped          # Docker Desktop 启动时自动拉起 → 开机自启
+    ports:
+      - "127.0.0.1:8000:8000"        # 仅本机可访问
+    volumes:
+      - ./data:/app/data             # DB + 登录态 + CSV/日志 持久化(也复用宿主机扫码登录)
+    env_file:
+      - ./data/secret.env            # SMTP 密钥(纯 KEY=VAL, gitignore)
