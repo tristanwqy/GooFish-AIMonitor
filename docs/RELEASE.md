@@ -16,8 +16,9 @@ git push origin v0.1.0
 | 平台 | 产物 |
 |---|---|
 | macOS Apple Silicon | `GooFish-AIMonitor-macos-arm64-<版本>.dmg` |
-| macOS Intel | `GooFish-AIMonitor-macos-x64-<版本>.dmg` |
 | Windows x64 | `GooFish-AIMonitor-Setup-<版本>.exe`(Inno Setup 安装程序) |
+
+> 只出 Apple 芯片版 Mac;Intel Mac 用 Docker / 源码方式跑(GitHub Intel runner 排队太久, 且新 Mac 已全面转 Apple 芯片)。
 
 每个平台构建时都会跑一次 `--selfcheck`(拉起包内 Chromium), 失败就让该平台构建红, 避免发出坏包。也可在 Actions 页面用 **workflow_dispatch** 手动触发(不发 Release, 只产 artifact, 用于试构建)。
 

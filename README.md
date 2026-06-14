@@ -114,10 +114,9 @@
 | 你的电脑 | 下载哪个文件 |
 |---|---|
 | Mac · Apple 芯片（M1/M2/M3/M4） | `GooFish-AIMonitor-macos-arm64-*.dmg` |
-| Mac · Intel 芯片（2021 年前） | `GooFish-AIMonitor-macos-x64-*.dmg` |
 | Windows 10 / 11（64 位） | `GooFish-AIMonitor-Setup-*.exe` |
 
-> 不确定自己哪种 Mac？左上角  →「关于本机」，看「芯片 / 处理器」写的是 Apple 还是 Intel。
+> macOS 目前只出 Apple 芯片版;2021 年前的 Intel Mac 暂不支持,可用下面的 Docker / 源码方式跑。
 
 装好打开会自动弹浏览器到 `http://127.0.0.1:8000`，扫码登录即用。数据存在你的用户目录（Mac `~/Library/Application Support/GooFish-AIMonitor`、Windows `%APPDATA%\GooFish-AIMonitor`），升级卸载都不丢，和 Docker 版互不干扰。想自己出包或看打包原理，见 [`docs/RELEASE.md`](docs/RELEASE.md)。
 
