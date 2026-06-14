@@ -97,6 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - uses: actions/checkout@v4   # 取 docs/release-notes.md 供 body_path 用
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
