@@ -13,7 +13,7 @@
 
 `Python` · `FastAPI` · `Playwright` · `React + Vite` · `SQLite` · `Docker`
 
-[这是什么](#这是什么) · [能帮你做什么](#它能帮你做什么) · [五套配色](#-五套配色随心换) · [跑起来](#跑起来) · [数据安全](#数据都在你自己手里)
+[这是什么](#这是什么) · [能帮你做什么](#它能帮你做什么) · [五套配色](#-五套配色随心换) · [下载即用](#-下载即用) · [跑起来](#跑起来) · [数据安全](#数据都在你自己手里)
 
 </div>
 
@@ -105,9 +105,29 @@
 
 ---
 
+## ⬇️ 下载即用
+
+**Mac / Windows 都有安装包，不用配环境**——双击就开，Chromium 已经打进包里，装完离线即用。
+
+**[→ 前往 Releases 下载最新版](https://github.com/tristanwqy/GooFish-AIMonitor/releases/latest)**
+
+| 你的电脑 | 下载哪个文件 |
+|---|---|
+| Mac · Apple 芯片（M1/M2/M3/M4） | `GooFish-AIMonitor-macos-arm64-*.dmg` |
+| Mac · Intel 芯片（2021 年前） | `GooFish-AIMonitor-macos-x64-*.dmg` |
+| Windows 10 / 11（64 位） | `GooFish-AIMonitor-Setup-*.exe` |
+
+> 不确定自己哪种 Mac？左上角  →「关于本机」，看「芯片 / 处理器」写的是 Apple 还是 Intel。
+
+装好打开会自动弹浏览器到 `http://127.0.0.1:8000`，扫码登录即用。数据存在你的用户目录（Mac `~/Library/Application Support/GooFish-AIMonitor`、Windows `%APPDATA%\GooFish-AIMonitor`），升级卸载都不丢，和 Docker 版互不干扰。想自己出包或看打包原理，见 [`docs/RELEASE.md`](docs/RELEASE.md)。
+
+---
+
 ## 跑起来
 
-### 用 Docker（推荐，省心，还能开机自启）
+> 适合想常驻后台、开机自启，或要改源码的场景。只是想用，直接看上面的 [下载即用](#-下载即用) 就行。
+
+### 用 Docker（省心，还能开机自启）
 
 ```bash
 # 1) 想收邮件就填一下密钥（不填也行，会自动退回到只写本地 CSV）
