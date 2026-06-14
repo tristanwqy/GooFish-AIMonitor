@@ -12,3 +12,6 @@ dist/
 build/
 *.dmg
 *.spec.bak
+
+# 图标中间产物(由 packaging/make_icon.py 生成)
+packaging/appicon.iconset/

@@ -32,6 +32,16 @@ for pkg in ("playwright", "uvicorn", "fastapi", "starlette", "apscheduler",
 datas += [(os.path.join(PKG_DIR, "web", "static"), "xianyu_crawler/web/static")]
 hiddenimports += ["xianyu_crawler", "xianyu_crawler.web.app"]
 
+# pywebview: UI 原生窗口(含 JS 桥接资源)+ 各平台后端
+d, b, h = collect_all("webview")
+datas += d
+binaries += b
+hiddenimports += h
+if sys.platform == "darwin":      # WKWebView 走 pyobjc
+    hiddenimports += ["webview.platforms.cocoa", "objc", "Foundation", "AppKit", "WebKit", "Quartz"]
+elif sys.platform.startswith("win"):   # WebView2 走 pythonnet
+    hiddenimports += ["webview.platforms.edgechromium", "clr_loader", "pythonnet"]
+
 a = Analysis(
     [os.path.join(PKG_DIR, "launcher.py")],
     pathex=[os.path.dirname(PKG_DIR)],
@@ -40,12 +50,17 @@ a = Analysis(
     hiddenimports=hiddenimports,
     excludes=["tkinter"],
 )
+# 图标随仓库带(packaging/make_icon.py 生成); SPECPATH 即本 spec 所在目录
+ICON_ICNS = os.path.join(SPECPATH, "appicon.icns")
+ICON_ICO = os.path.join(SPECPATH, "appicon.ico")
+
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, [],
     exclude_binaries=True,
     name="GooFish-AIMonitor",
-    console=True,            # 保留控制台便于看服务日志(后续可改 windowed)
+    console=False,           # GUI 应用: 不带终端窗口
+    icon=ICON_ICO if sys.platform.startswith("win") else ICON_ICNS,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="GooFish-AIMonitor")
 
@@ -53,5 +68,12 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name="GooFish-AIMonitor.app",
+        icon=ICON_ICNS,
         bundle_identifier="org.tristanwqy.goofish-aimonitor",
+        info_plist={
+            "CFBundleName": "GooFish-AIMonitor",
+            "CFBundleDisplayName": "GooFish-AIMonitor",
+            "NSHighResolutionCapable": True,
+            "LSApplicationCategoryType": "public.app-category.utilities",
+        },
     )
