@@ -79,9 +79,11 @@ jobs:
         shell: pwsh
         run: |
           python packaging/copy_browsers.py "dist/GooFish-AIMonitor/ms-playwright"
+          if ($LASTEXITCODE -ne 0) { throw "copy_browsers failed" }
           & "dist/GooFish-AIMonitor/GooFish-AIMonitor.exe" --selfcheck
           if ($LASTEXITCODE -ne 0) { throw "selfcheck failed" }
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" packaging\goofish.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
