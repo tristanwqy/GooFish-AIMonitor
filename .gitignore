@@ -9,3 +9,6 @@ tests/fixtures/*.real.json
 node_modules/
 src/xianyu_crawler/web/static/
 dist/
+build/
+*.dmg
+*.spec.bak
