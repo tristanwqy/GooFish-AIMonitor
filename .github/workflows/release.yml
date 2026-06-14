@@ -20,10 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14       # Apple Silicon
+          - os: macos-14       # Apple Silicon(仅此, 不出 Intel 版)
             label: macos-arm64
-          - os: macos-13       # Intel
-            label: macos-x64
           - os: windows-latest # x64
             label: windows-x64
     runs-on: ${{ matrix.os }}
@@ -106,4 +104,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
-          generate_release_notes: true
+          body_path: docs/release-notes.md
