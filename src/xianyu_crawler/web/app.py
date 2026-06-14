@@ -1,5 +1,6 @@
 """FastAPI 控制台后端。"""
 import json
+import sys
 import threading
 from pathlib import Path
 
@@ -15,7 +16,11 @@ from ..storage import repo
 
 app = FastAPI(title="闲鱼控制台")
 
-_STATIC_DIR = Path(__file__).parent / "static"
+# 打包(PyInstaller)后静态资源在 _MEIPASS 下; 开发期就在包目录旁
+if getattr(sys, "frozen", False):
+    _STATIC_DIR = Path(getattr(sys, "_MEIPASS", ".")) / "xianyu_crawler" / "web" / "static"
+else:
+    _STATIC_DIR = Path(__file__).parent / "static"
 
 
 def get_db():
