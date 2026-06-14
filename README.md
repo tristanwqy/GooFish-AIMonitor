@@ -107,7 +107,7 @@
 
 ## ⬇️ 下载即用
 
-**Mac / Windows 都有安装包，不用配环境**——双击就开，Chromium 已经打进包里，装完离线即用。
+**Mac / Windows 都有安装包，不用配环境**——双击就开,会弹出一个**独立的应用窗口**(不是在你浏览器里开标签页)。Chromium 已经打进包里,装完离线即用。
 
 **[→ 前往 Releases 下载最新版](https://github.com/tristanwqy/GooFish-AIMonitor/releases/latest)**
 

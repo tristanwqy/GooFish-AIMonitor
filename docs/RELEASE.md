@@ -1,6 +1,6 @@
 # 发布桌面安装包
 
-GooFish-AIMonitor 除了 Docker, 还能打成 **Mac/Windows 桌面应用**(双击启动 → 自动开浏览器到控制台)。Chromium 直接打进包里, 安装后离线即用。
+GooFish-AIMonitor 除了 Docker, 还能打成 **Mac/Windows 桌面应用**(双击启动 → 弹出独立应用窗口)。Chromium 直接打进包里, 既当后台抓取引擎, 也用 `--app` 模式渲染控制台窗口; 安装后离线即用。
 
 ## 自动发布(推荐)
 
@@ -46,11 +46,11 @@ powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1 0.1.0
 ## 怎么测
 
 - **冒烟(自动)**:`<可执行文件> --selfcheck` 只验证「能不能拉起打包内的 Chromium」, 打印 `SELFCHECK_OK`。CI 每次构建都跑。
-- **手动**:双击安装/运行 → 浏览器自动打开 `http://127.0.0.1:8000` → 扫码登录 → 跑一轮看推荐/收藏。
+- **手动**:双击安装/运行 → 自动弹出应用窗口(控制台)→ 扫码登录 → 跑一轮看推荐/收藏。关掉窗口即退出应用。
 - 数据存用户目录(macOS `~/Library/Application Support/GooFish-AIMonitor`、Windows `%APPDATA%\GooFish-AIMonitor`), 升级/卸载不丢, 与 Docker 版互不干扰。
 
 ## 打包是怎么搭的
 
-- [`src/xianyu_crawler/launcher.py`](../src/xianyu_crawler/launcher.py) — 桌面入口:起服务 + 开浏览器;打包时把 `PLAYWRIGHT_BROWSERS_PATH` 指向包内 Chromium;`--selfcheck` 冒烟。
+- [`src/xianyu_crawler/launcher.py`](../src/xianyu_crawler/launcher.py) — 桌面入口:起服务(后台线程)+ 用包内 Chromium 以 `--app` 开应用窗口(关窗即退);打包时把 `PLAYWRIGHT_BROWSERS_PATH` 指向包内 Chromium;`--selfcheck` 冒烟。
 - [`packaging/goofish.spec`](../packaging/goofish.spec) — PyInstaller 配置。**故意不让它打 Chromium**(嵌套 .app/权限会让 PyInstaller 报错), 只打 Python + 前端。
 - [`packaging/copy_browsers.py`](../packaging/copy_browsers.py) — 构建后把 Chromium 从 Playwright 缓存原样拷进包(保留可执行权限), 运行时由 launcher 指过去。
