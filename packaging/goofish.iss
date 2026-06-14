@@ -26,8 +26,10 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
+; ChineseSimplified.isl 是非官方翻译, Inno Setup 标准安装/choco 包都不带,
+; 所以随仓库一起带一份(packaging/ChineseSimplified.isl), 用 {#SourcePath} 按脚本目录定位。
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "chinesesimplified"; MessagesFile: "{#SourcePath}ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
