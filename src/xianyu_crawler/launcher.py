@@ -69,12 +69,24 @@ def _selfcheck() -> int:
         return 1
 
 
-def _wait_ready(timeout_s: float = 60.0) -> bool:
+def _pick_port(preferred: int) -> int:
+    """优先用 preferred(8000); 被占(例如 Docker 版也在跑)就让系统挑个空闲端口。"""
+    for cand in (preferred, 0):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((HOST, cand))
+                return s.getsockname()[1]
+            except OSError:
+                continue
+    return preferred
+
+
+def _wait_ready(port: int, timeout_s: float = 60.0) -> bool:
     """轮询本地端口, 等服务起来。"""
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:
-            with socket.create_connection((HOST, PORT), timeout=0.5):
+            with socket.create_connection((HOST, port), timeout=0.5):
                 return True
         except OSError:
             time.sleep(0.5)
@@ -116,9 +128,9 @@ def _launch_app_window(chrome_exe: str, url: str) -> subprocess.Popen[bytes] | N
         return None
 
 
-def _open_default_browser() -> None:
-    if _wait_ready():
-        webbrowser.open(f"http://{HOST}:{PORT}")
+def _open_default_browser(port: int) -> None:
+    if _wait_ready(port):
+        webbrowser.open(f"http://{HOST}:{port}")
 
 
 def main() -> None:
@@ -144,22 +156,23 @@ def main() -> None:
     finally:
         s.close()
 
-    url = f"http://{HOST}:{PORT}"
+    port = _pick_port(PORT)   # 8000 被占(如 Docker 版在跑)就自动换空闲端口
+    url = f"http://{HOST}:{port}"
     chrome = _bundled_chromium_exe()
     print(f">> 闲鱼控制台: {url} (数据目录: {os.environ['XIANYU_DATA_DIR']})")
 
     if chrome is None:
         # 找不到 Chromium(一般是没装浏览器的环境): 开系统默认浏览器, 前台跑服务
-        threading.Thread(target=_open_default_browser, daemon=True).start()
-        uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
+        threading.Thread(target=_open_default_browser, args=(port,), daemon=True).start()
+        uvicorn.run(app, host=HOST, port=port, log_level="warning")
         return
 
     # 桌面应用模式: 服务跑后台线程, 用包内 Chromium 开应用窗口, 关掉窗口即退出整个应用
-    config = uvicorn.Config(app, host=HOST, port=PORT, log_level="warning")
+    config = uvicorn.Config(app, host=HOST, port=port, log_level="warning")
     server = uvicorn.Server(config)
     srv_thread = threading.Thread(target=server.run, daemon=True)
     srv_thread.start()
-    if not _wait_ready():
+    if not _wait_ready(port):
         print("服务启动超时, 退出。")
         sys.exit(1)
 
