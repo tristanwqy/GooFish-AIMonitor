@@ -76,12 +76,7 @@ export default function Settings({ status }) {
       const r = await api.testReview()
       setLlmMsg(
         r.ok
-          ? {
-              ok: true,
-              text:
-                `连接正常 · 模型 ${r.model}` +
-                (r.parsed === false ? '（返回不是规整 JSON，判定时会放行）' : ''),
-            }
+          ? { ok: true, text: `AI 审核可用 · 模型 ${r.model}` }
           : { ok: false, text: r.error },
       )
       api.config().then(setCfg)

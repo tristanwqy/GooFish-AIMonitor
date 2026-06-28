@@ -47,6 +47,44 @@ def test_review_items_uses_llm_verdict(monkeypatch):
     assert vs[0].ok is True and vs[1].ok is False and "不符" in vs[1].reason
 
 
+def _chunk_size(msgs):
+    import re as _re
+    return len(_re.findall(r"^\d+\. ", msgs[1]["content"], _re.M))
+
+
+def test_review_items_chunks_large_batches(monkeypatch):
+    # 大批量按 REVIEW_BATCH(=5) 分批调用, 而不是一次塞给模型(避免推理模型 content 为空)
+    items = [Item(item_id=str(i), title="M5", url="u", price=1) for i in range(12)]
+    sizes = []
+
+    def fake(msgs, st):
+        n = _chunk_size(msgs)
+        sizes.append(n)
+        return "[" + ",".join(f'{{"i":{k},"ok":true}}' for k in range(n)) + "]"
+
+    monkeypatch.setattr(review, "_call_llm", fake)
+    vs = review.review_items(items, "必须M5", Settings())
+    assert len(vs) == 12 and all(v.ok for v in vs)
+    assert sizes == [5, 5, 2]                               # REVIEW_BATCH=5
+
+
+def test_review_items_one_chunk_failure_isolated(monkeypatch):
+    # 某一批失败只放行那一批, 其余批次正常裁决
+    items = [Item(item_id=str(i), title="x", url="u", price=1) for i in range(7)]
+
+    def fake(msgs, st):
+        n = _chunk_size(msgs)
+        if n <= 2:                                          # 第二批(2 条)炸
+            raise RuntimeError("boom")
+        return "[" + ",".join(f'{{"i":{k},"ok":false}}' for k in range(n)) + "]"
+
+    monkeypatch.setattr(review, "_call_llm", fake)
+    vs = review.review_items(items, "req", Settings())
+    assert len(vs) == 7
+    assert all(v.ok is False for v in vs[:5])               # 第一批正常裁决
+    assert all(v.reason == review.REVIEW_NOT_RUN for v in vs[5:])  # 第二批放行 + 标记
+
+
 def test_build_messages_shape():
     items = [Item(item_id="a", title="标题X", url="u", price=1, condition="99新", location="上海")]
     msgs = _build_messages(items, "要 M5", Settings())
@@ -85,14 +123,31 @@ def test_review_uses_configured_params(monkeypatch):
 def test_test_review_ok(monkeypatch):
     monkeypatch.setattr(review, "_call_llm", lambda msgs, st: '[{"i":0,"ok":true,"reason":"符合"}]')
     r = review.test_review(Settings(review_model="m-x"))
-    assert r["ok"] is True and r["parsed"] is True and r["model"] == "m-x"
+    assert r["ok"] is True and r["model"] == "m-x"
 
 
-def test_test_review_ok_but_unparsable_reply(monkeypatch):
-    # 调用通了但返回不是 JSON 数组 → 仍算连通(ok), 只标 parsed=False
+def test_test_review_unparsable_reply_is_not_ok(monkeypatch):
+    # 连上了但返回不是 JSON 数组 → 诚实判 ok=False(否则会「测试通过但实际全跳过」)
     monkeypatch.setattr(review, "_call_llm", lambda msgs, st: "我觉得这个还行")
     r = review.test_review(Settings())
-    assert r["ok"] is True and r["parsed"] is False
+    assert r["ok"] is False and "JSON" in r["error"]
+
+
+def test_test_review_empty_content_hints_reasoning_model(monkeypatch):
+    # 推理模型典型症状: content 为空 → 给出可操作提示
+    monkeypatch.setattr(review, "_call_llm", lambda msgs, st: "   ")
+    r = review.test_review(Settings())
+    assert r["ok"] is False and "content 为空" in r["error"]
+
+
+def test_test_review_uses_passed_requirement(monkeypatch):
+    seen = {}
+    def cap(msgs, st):
+        seen["user"] = msgs[1]["content"]
+        return '[{"i":0,"ok":true}]'
+    monkeypatch.setattr(review, "_call_llm", cap)
+    review.test_review(Settings(), requirement="必须_独特要求_XYZ")
+    assert "必须_独特要求_XYZ" in seen["user"]
 
 
 def test_test_review_http_401_friendly(monkeypatch):

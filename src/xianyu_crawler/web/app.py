@@ -87,9 +87,11 @@ async def api_test_email(s: Session = Depends(get_db)):
 
 @app.post("/api/test-review")
 async def api_test_review(s: Session = Depends(get_db)):
-    """用当前(已保存的)配置对一条样例做一次真实 LLM 调用; 回显成功或错误原因。"""
+    """用当前(已保存的)配置 + 真实「AI 审核要求」做一次真实审核; 回显成功或错误原因。"""
     settings = service.effective_settings(repo.get_config(s))
-    return await run_in_threadpool(review.test_review, settings)
+    reqs = [w.requirement for w in repo.list_watches(s) if w.requirement]
+    requirement = max(reqs, key=len) if reqs else None   # 用最长的要求, 最能压出推理模型的坑
+    return await run_in_threadpool(review.test_review, settings, requirement)
 
 
 # ---------- recommendations ----------

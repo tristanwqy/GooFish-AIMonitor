@@ -63,9 +63,9 @@ class Settings(BaseSettings):
     review_base_url: str = "https://api.openai.com/v1"
     review_model: str = "doubao-seed-2.0-pro"
     review_api_token: str | None = None
-    review_timeout: float = 30.0
+    review_timeout: float = 60.0          # 本地/推理模型偏慢, 给足时间(否则易 ReadTimeout 整批放行)
     review_temperature: float = 0.0
-    review_max_tokens: int = 2000
+    review_max_tokens: int = 4000         # 推理模型要先思考再出 JSON, 额度太小会导致正文(content)为空
     review_system_prompt: str = DEFAULT_REVIEW_SYSTEM_PROMPT
     # 死链探测: 每轮最多对多少条待审推荐打开详情页核活(防止单轮太久)
     liveness_max_checks: int = 30

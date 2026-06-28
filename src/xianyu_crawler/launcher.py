@@ -11,12 +11,14 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 import socket
 import sys
 import threading
 import time
 import webbrowser
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 HOST, PORT = "127.0.0.1", 8000
@@ -109,13 +111,35 @@ def _open_app_window(url: str) -> bool:
     return True
 
 
+def _setup_logging(data_dir: Path) -> None:
+    """把日志(含 AI 审核失败原因)写到 数据目录/app.log, 方便排查。同时打到 stderr。
+
+    打包成桌面应用后没有终端, 这个文件就是「看日志」的地方:
+    macOS ~/Library/Application Support/GooFish-AIMonitor/app.log
+    """
+    root = logging.getLogger()
+    if any(isinstance(h, RotatingFileHandler) for h in root.handlers):
+        return
+    root.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    fh = RotatingFileHandler(data_dir / "app.log", maxBytes=2_000_000,
+                             backupCount=2, encoding="utf-8")
+    fh.setFormatter(fmt)
+    root.addHandler(fh)
+    sh = logging.StreamHandler()
+    sh.setFormatter(fmt)
+    root.addHandler(sh)
+
+
 def main() -> None:
     if "--selfcheck" in sys.argv:
         sys.exit(_selfcheck())
 
     os.environ.setdefault("XIANYU_DATA_DIR", str(_user_data_dir()))
     _use_bundled_chromium()
-    Path(os.environ["XIANYU_DATA_DIR"]).mkdir(parents=True, exist_ok=True)
+    data_dir = Path(os.environ["XIANYU_DATA_DIR"])
+    data_dir.mkdir(parents=True, exist_ok=True)
+    _setup_logging(data_dir)
 
     import uvicorn
     # 绝对导入: 打包后 launcher 作为 __main__ 运行, 相对导入会失败
