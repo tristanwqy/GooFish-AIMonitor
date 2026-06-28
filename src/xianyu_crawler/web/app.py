@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from . import runtime, runner, dto, login_runner
-from .. import service, notifier
+from .. import service, notifier, review
 from ..storage import repo
 
 app = FastAPI(title="闲鱼控制台")
@@ -83,6 +83,13 @@ async def api_test_email(s: Session = Depends(get_db)):
         return {"ok": True, "to": settings.notify_to}
     except Exception as e:  # noqa: BLE001 - 把失败原因回显给控制台
         return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/test-review")
+async def api_test_review(s: Session = Depends(get_db)):
+    """用当前(已保存的)配置对一条样例做一次真实 LLM 调用; 回显成功或错误原因。"""
+    settings = service.effective_settings(repo.get_config(s))
+    return await run_in_threadpool(review.test_review, settings)
 
 
 # ---------- recommendations ----------

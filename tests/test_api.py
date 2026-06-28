@@ -45,3 +45,24 @@ def test_status_and_favorites_empty(client):
     assert client.get("/api/status").json()["running"] is False
     assert client.get("/api/favorites").json() == []
     assert client.get("/api/events").json() == []
+
+
+def test_test_review_endpoint_ok(client, monkeypatch):
+    from xianyu_crawler import review
+    monkeypatch.setattr(review, "_call_llm", lambda msgs, st: '[{"i":0,"ok":true,"reason":"符合"}]')
+    body = client.post("/api/test-review").json()
+    assert body["ok"] is True and body["parsed"] is True
+
+
+def test_test_review_endpoint_reports_error(client, monkeypatch):
+    import httpx
+    from xianyu_crawler import review
+    req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    resp = httpx.Response(401, request=req)
+
+    def boom(msgs, st):
+        raise httpx.HTTPStatusError("Unauthorized", request=req, response=resp)
+
+    monkeypatch.setattr(review, "_call_llm", boom)
+    body = client.post("/api/test-review").json()
+    assert body["ok"] is False and "401" in body["error"]

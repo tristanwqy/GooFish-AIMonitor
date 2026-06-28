@@ -9,6 +9,8 @@ export default function Settings({ status }) {
   const [token, setToken] = useState('') // LLM token 同理(只写)
   const [testMsg, setTestMsg] = useState(null)
   const [testing, setTesting] = useState(false)
+  const [llmMsg, setLlmMsg] = useState(null) // LLM 测试结果
+  const [llmTesting, setLlmTesting] = useState(false)
   const [login, setLogin] = useState({ status: 'idle', has_state: false })
   const [confirmLogout, setConfirmLogout] = useState(false)
   const loginTimer = useRef(null)
@@ -61,6 +63,30 @@ export default function Settings({ status }) {
       if (r.ok) api.config().then(setCfg)
     } finally {
       setTesting(false)
+    }
+  }
+
+  // 测试 LLM: 先存最新配置(含刚填的 token), 再用它对一条样例做一次真实调用
+  const testLLM = async () => {
+    setLlmTesting(true)
+    setLlmMsg(null)
+    try {
+      await api.saveConfig(payload())
+      setToken('')
+      const r = await api.testReview()
+      setLlmMsg(
+        r.ok
+          ? {
+              ok: true,
+              text:
+                `连接正常 · 模型 ${r.model}` +
+                (r.parsed === false ? '（返回不是规整 JSON，判定时会放行）' : ''),
+            }
+          : { ok: false, text: r.error },
+      )
+      api.config().then(setCfg)
+    } finally {
+      setLlmTesting(false)
     }
   }
 
@@ -316,8 +342,17 @@ export default function Settings({ status }) {
             onChange={(v) => set('review_enabled', v)}
             label="启用 AI 审核"
           />
+          {llmMsg && (
+            <span className={llmMsg.ok ? 'test-ok' : 'test-err'}>
+              {llmMsg.ok ? '✓ ' : '✗ '}
+              {llmMsg.text}
+            </span>
+          )}
           <div className="grow" />
           {saved && <span className="saved-hint">已保存</span>}
+          <Button variant="ghost" onClick={testLLM} disabled={llmTesting}>
+            {llmTesting ? '测试中…' : '测试 LLM'}
+          </Button>
           <Button onClick={save}>保存</Button>
         </div>
       </Card>

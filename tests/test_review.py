@@ -1,3 +1,5 @@
+import httpx
+
 from xianyu_crawler import review
 from xianyu_crawler.review import ReviewVerdict, _parse_verdicts, _extract_json_array, _build_messages
 from xianyu_crawler.models import Item
@@ -77,3 +79,38 @@ def test_review_uses_configured_params(monkeypatch):
     review.review_items(items, "必须M5", st)
     assert captured["temperature"] == 0.7 and captured["max_tokens"] == 512
     assert captured["messages"][0]["content"] == "自定义提示词"
+
+
+# --- test_review(控制台「测试 LLM」按钮) ---
+def test_test_review_ok(monkeypatch):
+    monkeypatch.setattr(review, "_call_llm", lambda msgs, st: '[{"i":0,"ok":true,"reason":"符合"}]')
+    r = review.test_review(Settings(review_model="m-x"))
+    assert r["ok"] is True and r["parsed"] is True and r["model"] == "m-x"
+
+
+def test_test_review_ok_but_unparsable_reply(monkeypatch):
+    # 调用通了但返回不是 JSON 数组 → 仍算连通(ok), 只标 parsed=False
+    monkeypatch.setattr(review, "_call_llm", lambda msgs, st: "我觉得这个还行")
+    r = review.test_review(Settings())
+    assert r["ok"] is True and r["parsed"] is False
+
+
+def test_test_review_http_401_friendly(monkeypatch):
+    req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    resp = httpx.Response(401, request=req)
+
+    def boom(msgs, st):
+        raise httpx.HTTPStatusError("Unauthorized", request=req, response=resp)
+
+    monkeypatch.setattr(review, "_call_llm", boom)
+    r = review.test_review(Settings())
+    assert r["ok"] is False and "401" in r["error"]
+
+
+def test_test_review_connect_error_friendly(monkeypatch):
+    def boom(msgs, st):
+        raise httpx.ConnectError("name resolution failed")
+
+    monkeypatch.setattr(review, "_call_llm", boom)
+    r = review.test_review(Settings())
+    assert r["ok"] is False and "连不上" in r["error"]

@@ -99,3 +99,45 @@ def _extract_json_array(text: str) -> list:
     if start == -1 or end == -1 or end < start:
         raise ValueError("响应里没有 JSON 数组")
     return json.loads(s[start:end + 1])
+
+
+def _friendly_error(e: Exception) -> str:
+    """把底层异常翻成控制台能看懂的一句话(尤其区分 401/404, 帮用户判断是 key 还是地址/模型)。"""
+    if isinstance(e, httpx.HTTPStatusError):
+        code = e.response.status_code
+        hint = {
+            400: "请求被拒(模型名或参数可能不对)",
+            401: "Key 无效或无权限(鉴权失败)",
+            403: "无权限 / 被拒绝",
+            404: "接口地址或模型名不对",
+            429: "调用频率 / 额度超限",
+            500: "服务端错误", 502: "网关错误", 503: "服务暂不可用",
+        }.get(code, "")
+        return f"HTTP {code} {hint}".strip()
+    if isinstance(e, httpx.ConnectError):
+        return f"连不上接口地址(base url 可能写错): {e}"
+    if isinstance(e, httpx.TimeoutException):
+        return "请求超时(可调大超时或检查网络)"
+    return f"{type(e).__name__}: {e}"
+
+
+def test_review(settings: Settings) -> dict:
+    """用当前配置对一条样例做一次真实 LLM 调用, 回显成功或失败原因(控制台「测试」按钮用)。
+
+    只验证「接口地址 + 模型 + 鉴权」是否打通。返回内容能否解析成规整 JSON 只作附加提示:
+    解析失败时审核本就 fail-open 放行, 不影响"能不能调用"这件事。
+    """
+    sample = [Item(item_id="0", title="MacBook Pro 16寸 M1 Pro 32G 1T 国行 95新",
+                   url="", price=7000.0, condition="95新", location="北京")]
+    messages = _build_messages(sample, "只要国行 16寸 M1 Pro 32G 1T", settings)
+    try:
+        content = _call_llm(messages, settings)
+    except Exception as e:  # noqa: BLE001 - 失败原因回显给控制台, 不抛
+        return {"ok": False, "error": _friendly_error(e)}
+    try:
+        _parse_verdicts(content, 1)
+        parsed = True
+    except Exception:  # noqa: BLE001
+        parsed = False
+    return {"ok": True, "model": settings.review_model,
+            "parsed": parsed, "reply": content.strip()[:300]}

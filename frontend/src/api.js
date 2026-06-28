@@ -34,6 +34,7 @@ export const api = {
   stats: () => fetch('/api/stats').then(J),
   events: () => fetch('/api/events').then(J),
   testEmail: () => post('/api/test-email'),
+  testReview: () => post('/api/test-review'),
   loginStart: () => post('/api/login/start'),
   loginStatus: () => fetch('/api/login/status').then(J),
   logout: () => post('/api/login/logout'),
