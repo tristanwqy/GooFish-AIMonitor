@@ -31,9 +31,10 @@ git push origin v0.1.0
 ```bash
 pip install -e . pyinstaller
 (cd frontend && npm ci && npm run build)
-bash packaging/build_macos.sh          # → dist/GooFish-AIMonitor.app
-hdiutil create -volname GooFish-AIMonitor -srcfolder dist/GooFish-AIMonitor.app -ov -format UDZO GooFish.dmg
+bash packaging/build_macos.sh 0.1.0     # → dist/GooFish-AIMonitor.app + GooFish-AIMonitor-macos-arm64-0.1.0.dmg
 ```
+
+`build_macos.sh` 内部已经做了 **ad-hoc 重签名**(拷完 Chromium 后)和**带「拖到 Applications」入口的 DMG**, 不用再手动 `hdiutil`。
 
 ### Windows(需装 Inno Setup 6)
 
@@ -55,3 +56,7 @@ powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1 0.1.0
 - [`src/xianyu_crawler/launcher.py`](../src/xianyu_crawler/launcher.py) — 桌面入口:起服务(后台线程)+ 用包内 Chromium 以 `--app` 开应用窗口(关窗即退);打包时把 `PLAYWRIGHT_BROWSERS_PATH` 指向包内 Chromium;`--selfcheck` 冒烟。
 - [`packaging/goofish.spec`](../packaging/goofish.spec) — PyInstaller 配置。**故意不让它打 Chromium**(嵌套 .app/权限会让 PyInstaller 报错), 只打 Python + 前端。
 - [`packaging/copy_browsers.py`](../packaging/copy_browsers.py) — 构建后把 Chromium 从 Playwright 缓存原样拷进包(保留可执行权限), 运行时由 launcher 指过去。
+- [`packaging/sign_macos.sh`](../packaging/sign_macos.sh) — **拷完 Chromium 后给「外层 bundle」重新 ad-hoc 签名**。PyInstaller 出包时已 ad-hoc 签过, 但 `copy_browsers.py` 又往 `Contents/Resources` 塞了 Chromium, 让外层那张资源清单封印失效;不重签的话, 包下载到别的 Mac(带 `com.apple.quarantine`)会被判「已损坏, 无法打开」, 连右键「打开」都救不回。重签外层后退化成普通的「未验证开发者」拦截, 右键「打开」即可放行。**故意不 `--deep`、不动包内 Chromium**:它自带 Playwright/Google 的有效签名(还有 headed 渲染要的 entitlements), 重签反而会抹掉、且对 Chromium 嵌套结构容易签挂搞红构建。
+- [`packaging/make_dmg.sh`](../packaging/make_dmg.sh) — 出 DMG 时放上 `.app` + 指向 `/Applications` 的符号链接, 打开 DMG 就能把 App 拖进「应用程序」安装(而不是在只读 DMG 里直接跑, 那样易触发 App Translocation / 打不开)。
+
+> **为什么之前 mac 包打不开?** 不是签名「没签」, 而是签名被 `copy_browsers.py` 后续改动「弄坏」了 → Gatekeeper 报「已损坏」。根因是「先签名、后改 bundle」的顺序, 补一步「改完再重签」即解。若仍想完全免拦截(双击即开), 需自备 Apple 开发者账号做 Developer ID 签名 + 公证(notarize), 本仓库默认不做。

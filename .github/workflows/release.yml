@@ -63,9 +63,11 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           python packaging/copy_browsers.py "dist/GooFish-AIMonitor.app/Contents/Resources/ms-playwright"
+          # 拷完 Chromium 必须重签: 否则封印失效, 下载到别的 Mac 会「已损坏, 无法打开」
+          bash packaging/sign_macos.sh "dist/GooFish-AIMonitor.app"
           "dist/GooFish-AIMonitor.app/Contents/MacOS/GooFish-AIMonitor" --selfcheck
-          hdiutil create -volname "GooFish-AIMonitor" \
-            -srcfolder "dist/GooFish-AIMonitor.app" -ov -format UDZO \
+          # 出带「拖到 Applications」入口的 DMG(而非裸 .app)
+          bash packaging/make_dmg.sh "dist/GooFish-AIMonitor.app" "GooFish-AIMonitor" \
             "GooFish-AIMonitor-${{ matrix.label }}-${{ steps.ver.outputs.version }}.dmg"
 
       - name: 安装 Inno Setup (Windows)
