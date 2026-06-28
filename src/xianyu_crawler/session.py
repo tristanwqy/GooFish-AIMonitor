@@ -9,12 +9,19 @@ from playwright.sync_api import sync_playwright
 from .anti_detect import pick_profile
 
 HOME = "https://www.goofish.com/"
-DEFAULT_STATE = "data/storage_state.json"
 
 
 @contextmanager
-def browser_session(settings, state_path: str = DEFAULT_STATE):
-    """有/无登录态均可启动; 退出时刷新保存登录态。"""
+def browser_session(settings, state_path: str | None = None):
+    """有/无登录态均可启动; 退出时刷新保存登录态。
+
+    state_path 默认锚定到 settings.data_dir/storage_state.json —— 必须与扫码登录
+    (login_runner 存登录态的位置)一致。不要用相对 CWD 的 "data/storage_state.json":
+    打包成桌面应用后进程 CWD 不是数据目录, 相对路径会读不到登录态, 于是每轮抓取都被
+    判为"未登录"→ 直接按 login_expired 退出 → 收藏夹空、一个推荐都没有。
+    """
+    if state_path is None:
+        state_path = str(Path(settings.data_dir) / "storage_state.json")
     profile = pick_profile()
     with sync_playwright() as p:
         browser = p.chromium.launch(
