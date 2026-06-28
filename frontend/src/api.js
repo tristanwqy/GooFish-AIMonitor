@@ -26,6 +26,7 @@ export const api = {
     }).then(J),
 
   recommendations: (status = 'new') => fetch(`/api/recommendations?status=${status}`).then(J),
+  reviewPending: () => post('/api/recommendations/review'),
   approve: (id) => post(`/api/recommendations/${id}/approve`),
   reject: (id) => post(`/api/recommendations/${id}/reject`),
   mute: (id, days) => post(`/api/recommendations/${id}/mute?days=${days}`),

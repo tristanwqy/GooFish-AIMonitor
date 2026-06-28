@@ -133,6 +133,41 @@ def scan_recommendations(ctx, session: Session, settings: Settings,
     return created
 
 
+def rereview_pending(session: Session, settings: Settings) -> dict:
+    """对已入库的「待审」推荐, 用当前 LLM 配置重新跑一次 AI 审核并更新裁决(不重新抓闲鱼)。
+
+    用途: 之前接口没配好时 review fail-open 攒下的「未审核」推荐(rec_reason=(审核未运行)),
+    把接口配好(可用「测试 LLM」验证)后一键补审。没跑通的保留原样并计数提示。
+    """
+    if not settings.review_enabled:
+        return {"ok": False, "error": "AI 审核未启用, 请先在设置里打开「启用 AI 审核」"}
+    rows = [r for r in repo.list_recommendations(session, "new") if not r.dead]
+    requirements = {w.name: w.requirement for w in repo.list_watches(session)}
+    by_watch: dict[str | None, list] = {}
+    for r in rows:
+        by_watch.setdefault(r.watch_name, []).append(r)
+
+    reviewed = passed = rejected = not_run = skipped = 0
+    for wname, recs in by_watch.items():
+        requirement = requirements.get(wname)
+        if not requirement:                  # 该监控条件没写「AI 审核要求」→ 无从审核
+            skipped += len(recs)
+            continue
+        items = [Item(item_id=r.item_id, title=r.title, url=r.url, price=r.latest_price,
+                      condition=r.condition, location=r.location) for r in recs]
+        verdicts = review.review_items(items, requirement, settings)
+        for r, v in zip(recs, verdicts):
+            if v.reason == review.REVIEW_NOT_RUN:   # 接口没跑通 → 保留原裁决, 只计数
+                not_run += 1
+                continue
+            repo.update_rec_verdict(session, r.item_id, v.ok, v.reason or None)
+            reviewed += 1
+            passed += int(bool(v.ok))
+            rejected += int(not v.ok)
+    return {"ok": True, "reviewed": reviewed, "passed": passed, "rejected": rejected,
+            "not_run": not_run, "skipped_no_requirement": skipped}
+
+
 def sweep_liveness(ctx, session: Session, settings: Settings) -> int:
     """对待审推荐逐条打开详情页核活, 已删除/下架的标死链(置灰, 不再误开)。
 

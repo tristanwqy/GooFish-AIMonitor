@@ -66,3 +66,19 @@ def test_test_review_endpoint_reports_error(client, monkeypatch):
     monkeypatch.setattr(review, "_call_llm", boom)
     body = client.post("/api/test-review").json()
     assert body["ok"] is False and "401" in body["error"]
+
+
+def test_rereview_endpoint(client, monkeypatch):
+    from xianyu_crawler import review
+    from xianyu_crawler.web import runtime
+    from xianyu_crawler.storage import repo
+    from xianyu_crawler.models import Item
+    s = runtime.session()
+    repo.add_watch(s, name="w", keywords='["x"]', requirement="必须 M1 Pro")
+    repo.create_recommendation(s, Item(item_id="a", title="M1 Pro 机", url="u", price=7000),
+                               "w", reason=review.REVIEW_NOT_RUN, ok=True)
+    monkeypatch.setattr(review, "review_items",
+                        lambda items, req, st: [review.ReviewVerdict(ok=False, reason="不符") for _ in items])
+    body = client.post("/api/recommendations/review").json()
+    assert body["ok"] is True and body["reviewed"] == 1 and body["rejected"] == 1
+    assert client.get("/api/recommendations?status=new").json()[0]["rec_ok"] is False

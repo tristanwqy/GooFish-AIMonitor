@@ -19,6 +19,9 @@ from .models import Item
 
 logger = logging.getLogger(__name__)
 
+# 审核没跑通(接口报错/未配置)时的占位理由; 一键补审据此识别"还没真正审过"的条目。
+REVIEW_NOT_RUN = "(审核未运行)"
+
 
 class ReviewVerdict(BaseModel):
     ok: bool
@@ -35,7 +38,7 @@ def review_items(items: list[Item], requirement: str | None,
         return _parse_verdicts(content, len(items))
     except Exception as e:  # noqa: BLE001 - 审核失败不应黑洞推荐
         logger.warning("二次审核调用失败, 放行全部: %s", e)
-        return [ReviewVerdict(ok=True, reason="(审核未运行)") for _ in items]
+        return [ReviewVerdict(ok=True, reason=REVIEW_NOT_RUN) for _ in items]
 
 
 def _build_messages(items: list[Item], requirement: str, settings: Settings) -> list[dict]:

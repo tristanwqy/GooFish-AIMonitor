@@ -8,11 +8,31 @@ export default function Recommendations({ refreshKey, onToast }) {
   const [busy, setBusy] = useState({})
   const [muteOpen, setMuteOpen] = useState(null)
   const [onlyPassed, setOnlyPassed] = useState(true) // 默认只看 LLM 通过的
+  const [reviewing, setReviewing] = useState(false)
 
   const load = () => api.recommendations('new').then(setItems)
   useEffect(() => {
     load()
   }, [refreshKey])
+
+  // 一键 AI 审核: 用当前 LLM 配置对已入库的待审推荐补审(不重新抓取)
+  const reviewAll = async () => {
+    setReviewing(true)
+    try {
+      const r = await api.reviewPending()
+      if (r.ok === false) {
+        onToast?.(r.error || 'AI 审核未运行')
+      } else {
+        const parts = [`已审核 ${r.reviewed} 条`, `通过 ${r.passed}`, `未过 ${r.rejected}`]
+        if (r.not_run) parts.push(`${r.not_run} 条没跑通（用「测试 LLM」查接口）`)
+        if (r.skipped_no_requirement) parts.push(`${r.skipped_no_requirement} 条无审核要求已跳过`)
+        onToast?.(parts.join(' · '))
+        await load()
+      }
+    } finally {
+      setReviewing(false)
+    }
+  }
 
   const act = async (id, fn) => {
     setBusy((b) => ({ ...b, [id]: true }))
@@ -122,13 +142,18 @@ export default function Recommendations({ refreshKey, onToast }) {
       </h1>
       <p className="page-sub">定时发现你没见过的商品，你来决定收藏或忽略。按监控条件分组。</p>
       {items.length > 0 && (
-        <div className="rec-filter">
-          <button className={`seg${onlyPassed ? ' on' : ''}`} onClick={() => setOnlyPassed(true)}>
-            仅 LLM 通过 <b>{passedCount}</b>
-          </button>
-          <button className={`seg${!onlyPassed ? ' on' : ''}`} onClick={() => setOnlyPassed(false)}>
-            全部 <b>{items.length}</b>
-          </button>
+        <div className="rec-toolbar">
+          <div className="rec-filter">
+            <button className={`seg${onlyPassed ? ' on' : ''}`} onClick={() => setOnlyPassed(true)}>
+              仅 LLM 通过 <b>{passedCount}</b>
+            </button>
+            <button className={`seg${!onlyPassed ? ' on' : ''}`} onClick={() => setOnlyPassed(false)}>
+              全部 <b>{items.length}</b>
+            </button>
+          </div>
+          <Button variant="ghost" disabled={reviewing} onClick={reviewAll}>
+            {reviewing ? 'AI 审核中…' : '一键 AI 审核'}
+          </Button>
         </div>
       )}
       {shown.length === 0 ? (

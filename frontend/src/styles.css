@@ -185,7 +185,9 @@ button { font-family: inherit; }
 .page-title .count { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--acc); background: var(--soft); border-radius: 11px; padding: 2px 9px; font-weight: 500; }
 .page-sub { font-size: 13px; color: var(--dim); margin-bottom: 18px; line-height: 1.5; }
 
-/* 段控(仅通过 / 全部) */
+/* 段控(仅通过 / 全部) + 右侧「一键 AI 审核」 */
+.rec-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.rec-toolbar .rec-filter { margin-bottom: 0; }
 .rec-filter { display: inline-flex; background: var(--s1); border: 1px solid var(--line); border-radius: var(--rad); padding: 3px; margin-bottom: 18px; }
 .rec-filter .seg {
   background: none; border: none; padding: 6px 14px; cursor: pointer;

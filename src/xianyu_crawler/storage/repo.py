@@ -243,6 +243,15 @@ def set_rec_status(s: Session, item_id: str, status: str) -> None:
         s.commit()
 
 
+def update_rec_verdict(s: Session, item_id: str, ok: bool | None, reason: str | None) -> None:
+    """一键补审: 只更新 LLM 裁决(rec_ok/rec_reason), 不动 rec_status。"""
+    row = s.get(ItemRow, item_id)
+    if row is not None:
+        row.rec_ok = ok
+        row.rec_reason = reason
+        s.commit()
+
+
 def list_favorites(s: Session) -> list[ItemRow]:
     """收藏视图 = 闲鱼收藏夹(source=favorite) ∪ 我们批准收藏过的。死链排末尾。"""
     return list(s.scalars(

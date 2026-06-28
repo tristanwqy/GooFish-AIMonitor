@@ -144,3 +144,55 @@ def test_watchrow_to_watch_roundtrip():
     w = service.watchrow_to_watch(row)
     assert w.keywords == ["iPhone", "苹果"] and w.condition == ["99新"]
     assert w.price_max == 5000 and w.free_shipping is True
+
+
+# --- 一键 AI 审核(补审已入库推荐) ---
+def _seed_pending(s, review):
+    repo.add_watch(s, name="w", keywords='["x"]', requirement="必须 M1 Pro")
+    repo.create_recommendation(s, Item(item_id="a", title="M1 Pro 机", url="u", price=7000),
+                               "w", reason=review.REVIEW_NOT_RUN, ok=True)
+    repo.create_recommendation(s, Item(item_id="b", title="别的机", url="u", price=7000),
+                               "w", reason=review.REVIEW_NOT_RUN, ok=True)
+
+
+def test_rereview_pending_updates_verdicts(monkeypatch):
+    from xianyu_crawler import review
+    s = make_session("sqlite:///:memory:", create=True)
+    _seed_pending(s, review)
+    monkeypatch.setattr(review, "review_items", lambda items, req, st: [
+        review.ReviewVerdict(ok=(it.item_id == "a"), reason="符合" if it.item_id == "a" else "不符")
+        for it in items])
+    out = service.rereview_pending(s, Settings())
+    assert out["ok"] and out["reviewed"] == 2 and out["passed"] == 1 and out["rejected"] == 1
+    recs = {r.item_id: r for r in repo.list_recommendations(s)}
+    assert recs["a"].rec_ok is True and recs["b"].rec_ok is False
+    assert recs["b"].rec_reason == "不符"
+
+
+def test_rereview_keeps_unrun_when_llm_still_fails(monkeypatch):
+    from xianyu_crawler import review
+    s = make_session("sqlite:///:memory:", create=True)
+    _seed_pending(s, review)
+    # LLM 仍没跑通 → 占位裁决, 不改写原裁决, 只计数
+    monkeypatch.setattr(review, "review_items", lambda items, req, st: [
+        review.ReviewVerdict(ok=True, reason=review.REVIEW_NOT_RUN) for _ in items])
+    out = service.rereview_pending(s, Settings())
+    assert out["reviewed"] == 0 and out["not_run"] == 2
+
+
+def test_rereview_disabled_returns_error():
+    s = make_session("sqlite:///:memory:", create=True)
+    out = service.rereview_pending(s, Settings(review_enabled=False))
+    assert out["ok"] is False and "启用" in out["error"]
+
+
+def test_rereview_skips_watch_without_requirement(monkeypatch):
+    from xianyu_crawler import review
+    s = make_session("sqlite:///:memory:", create=True)
+    repo.add_watch(s, name="w", keywords='["x"]')   # 无 requirement
+    repo.create_recommendation(s, Item(item_id="a", title="t", url="u", price=1000), "w")
+    called = {"n": 0}
+    monkeypatch.setattr(review, "review_items",
+                        lambda *a, **k: called.__setitem__("n", called["n"] + 1) or [])
+    out = service.rereview_pending(s, Settings())
+    assert out["skipped_no_requirement"] == 1 and out["reviewed"] == 0 and called["n"] == 0

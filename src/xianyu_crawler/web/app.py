@@ -98,6 +98,16 @@ def api_list_recs(status: str = "new", s: Session = Depends(get_db)):
     return [dto.itemrow_to_rec(r) for r in repo.list_recommendations(s, status)]
 
 
+@app.post("/api/recommendations/review")
+def api_rereview(s: Session = Depends(get_db)):
+    """一键 AI 审核: 用当前 LLM 配置对已入库的待审推荐重新审核(补审之前没跑通的), 不重新抓取。
+
+    同步 def → FastAPI 在线程池里跑, LLM 调用阻塞该 worker, 与 session 同线程, 安全。
+    """
+    settings = service.effective_settings(repo.get_config(s))
+    return service.rereview_pending(s, settings)
+
+
 @app.post("/api/recommendations/{item_id}/approve")
 async def api_approve(item_id: str):
     ok = await run_in_threadpool(runner.approve, item_id)
