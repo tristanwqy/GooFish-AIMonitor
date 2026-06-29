@@ -119,6 +119,9 @@ class RecommendationOut(BaseModel):
     seller_nick: str | None = None
     watch_name: str | None = None
     pic_url: str | None = None
+    want_count: int | None = None         # 想要次数
+    browse_count: int | None = None       # 浏览次数(详情页, 死链核活时取)
+    collect_count: int | None = None      # 收藏次数(同上)
     reason: str | None = None
     rec_ok: bool | None = None            # LLM 裁决: True 通过 / False 未过 / None 未审
     dead: bool = False
@@ -221,6 +224,7 @@ def itemrow_to_rec(r: ItemRow) -> RecommendationOut:
         item_id=r.item_id, title=r.title, url=r.url, price=r.latest_price,
         location=r.location, condition=r.condition, free_shipping=r.free_shipping,
         seller_nick=r.seller_nick, watch_name=r.watch_name, pic_url=r.pic_url,
+        want_count=r.want_count, browse_count=r.browse_count, collect_count=r.collect_count,
         reason=r.rec_reason, rec_ok=r.rec_ok, dead=r.dead, dead_reason=r.dead_reason,
         publish_time=_iso(r.publish_time), first_seen_at=_iso(r.first_seen_at),
         rec_created_at=_iso(r.rec_created_at), price_changed_at=_iso(r.price_changed_at),

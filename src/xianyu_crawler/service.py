@@ -27,7 +27,7 @@ def _search(ctx, watch: Watch, settings: Settings):
     return _search_mod.search(ctx, watch, settings.search_max_pages, settings.search_url)
 
 
-def _check_liveness(ctx, item_id: str) -> tuple[bool, str | None]:
+def _check_liveness(ctx, item_id: str) -> tuple[bool, str | None, dict | None]:
     return _liveness_mod.check_liveness(ctx, item_id)
 
 
@@ -178,7 +178,9 @@ def sweep_liveness(ctx, session: Session, settings: Settings) -> int:
     pending = [r for r in rows if not r.dead][: settings.liveness_max_checks]
     newly_dead = 0
     for r in pending:
-        dead, reason = _check_liveness(ctx, r.item_id)
+        dead, reason, stats = _check_liveness(ctx, r.item_id)
+        if stats:                          # 顺带回写浏览/收藏/想要次数
+            repo.update_item_stats(session, r.item_id, **stats)
         if dead:
             repo.mark_dead(session, r.item_id, reason or "已删除")
             repo.add_event(session, r.item_id, "sold",

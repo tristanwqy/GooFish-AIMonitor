@@ -1,6 +1,7 @@
 from xianyu_crawler import service
 from xianyu_crawler.storage.db import make_session
 from xianyu_crawler.storage import repo
+from xianyu_crawler.storage.orm import ItemRow
 from xianyu_crawler.models import Item
 from xianyu_crawler.config import Settings, Watch
 
@@ -54,14 +55,19 @@ def test_sweep_liveness_marks_dead(monkeypatch):
     s = make_session("sqlite:///:memory:", create=True)
     repo.create_recommendation(s, Item(item_id="alive", title="t", url="u", price=500), "w")
     repo.create_recommendation(s, Item(item_id="gone", title="t", url="u", price=500), "w")
-    # 模拟详情核活: gone 已删除, alive 在售
+    # 模拟详情核活: gone 已删除, alive 在售; 两者都顺带返回浏览/收藏/想要次数
     monkeypatch.setattr(
         service, "_check_liveness",
-        lambda ctx, iid: (True, "已删除") if iid == "gone" else (False, None))
+        lambda ctx, iid: (True, "已删除", {"browse_count": 9, "collect_count": 2, "want_count": 5})
+        if iid == "gone"
+        else (False, None, {"browse_count": 134, "collect_count": 3, "want_count": 7}))
     n = service.sweep_liveness(None, s, Settings())
     assert n == 1
     assert repo.is_dead(s, "gone") is True
     assert repo.is_dead(s, "alive") is False
+    # 核活顺带把浏览/收藏/想要次数回写到 alive
+    row = s.get(ItemRow, "alive")
+    assert (row.browse_count, row.collect_count, row.want_count) == (134, 3, 7)
     # 死链仍在待审列表(置灰展示, 不删除), 但不会被重复判死
     assert {r.item_id for r in repo.list_recommendations(s, "new")} == {"alive", "gone"}
     assert service.sweep_liveness(None, s, Settings()) == 0   # gone 已死, 跳过

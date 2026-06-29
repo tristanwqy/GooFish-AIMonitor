@@ -68,6 +68,13 @@ export default function Recommendations({ refreshKey, onToast }) {
           {it.condition && <span>{it.condition}</span>}
           {it.free_shipping && <Badge>包邮</Badge>}
         </div>
+        {(it.browse_count != null || it.want_count != null || it.collect_count != null) && (
+          <div className="rec-stats">
+            {it.browse_count != null && <span title="浏览次数">👁 浏览 {it.browse_count}</span>}
+            {it.want_count != null && <span title="想要次数">🙋 想要 {it.want_count}</span>}
+            {it.collect_count != null && <span title="收藏次数">⭐ 收藏 {it.collect_count}</span>}
+          </div>
+        )}
         {it.reason && (
           <div className={`rec-reason${failed ? ' rejected' : ''}`}>
             <span className="rec-reason-tag">{failed ? '未通过' : 'AI'}</span>

@@ -33,10 +33,14 @@ def test_recommendations_api(client):
     from xianyu_crawler.models import Item
     s = runtime.session()
     repo.create_recommendation(
-        s, Item(item_id="x1", title="t", url="u", price=1000, location="上海", free_shipping=True), "w1")
+        s, Item(item_id="x1", title="t", url="u", price=1000, location="上海",
+                free_shipping=True), "w1")
+    repo.update_item_stats(s, "x1", browse_count=134, collect_count=3, want_count=4)
     recs = client.get("/api/recommendations").json()
     assert len(recs) == 1 and recs[0]["item_id"] == "x1"
     assert recs[0]["location"] == "上海" and recs[0]["free_shipping"] is True
+    # 浏览/收藏/想要次数透传到前端
+    assert recs[0]["browse_count"] == 134 and recs[0]["collect_count"] == 3 and recs[0]["want_count"] == 4
     assert client.post("/api/recommendations/x1/reject").json()["ok"] is True
     assert client.get("/api/recommendations").json() == []
 

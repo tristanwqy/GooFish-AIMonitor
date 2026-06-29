@@ -27,6 +27,9 @@ class ItemRow(Base):
     condition: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     free_shipping: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     pic_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    want_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)      # 想要次数
+    browse_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)    # 浏览次数(详情页)
+    collect_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)   # 收藏次数(详情页)
     first_price: Mapped[float] = mapped_column(Float)
     latest_price: Mapped[float] = mapped_column(Float)
     reduce_price: Mapped[float] = mapped_column(Float, default=0.0)  # 闲鱼"收藏后降价"金额

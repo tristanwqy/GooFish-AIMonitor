@@ -252,6 +252,21 @@ def update_rec_verdict(s: Session, item_id: str, ok: bool | None, reason: str | 
         s.commit()
 
 
+def update_item_stats(s: Session, item_id: str, want_count: int | None = None,
+                      browse_count: int | None = None, collect_count: int | None = None) -> None:
+    """更新商品的浏览/收藏/想要次数(死链核活打开详情页时顺带取到)。None 的不覆盖。"""
+    row = s.get(ItemRow, item_id)
+    if row is None:
+        return
+    if want_count is not None:
+        row.want_count = want_count
+    if browse_count is not None:
+        row.browse_count = browse_count
+    if collect_count is not None:
+        row.collect_count = collect_count
+    s.commit()
+
+
 def list_favorites(s: Session) -> list[ItemRow]:
     """收藏视图 = 闲鱼收藏夹(source=favorite) ∪ 我们批准收藏过的。死链排末尾。"""
     return list(s.scalars(

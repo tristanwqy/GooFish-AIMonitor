@@ -20,15 +20,34 @@ def _ret_blob(ret: object) -> str:
     return str(ret or "")
 
 
-def check_liveness(ctx, item_id: str, wait_ms: int = 2500) -> tuple[bool, str | None]:
-    """返回 (dead, reason)。拿不到明确死亡信号即判活。"""
+def _to_int(v: object) -> int | None:
+    try:
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_stats(detail: dict | None) -> dict | None:
+    """从详情接口的 data.itemDO 取浏览/收藏/想要次数。全无则返回 None。"""
+    item = (((detail or {}).get("data") or {}).get("itemDO")) or {}
+    stats = {
+        "browse_count": _to_int(item.get("browseCnt")),
+        "collect_count": _to_int(item.get("collectCnt")),
+        "want_count": _to_int(item.get("wantCnt")),
+    }
+    return stats if any(v is not None for v in stats.values()) else None
+
+
+def check_liveness(ctx, item_id: str, wait_ms: int = 2500) -> tuple[bool, str | None, dict | None]:
+    """返回 (dead, reason, stats)。stats={browse_count,collect_count,want_count} 或 None。
+    打开详情页本就为核活, 顺带把这三个计数取回(不额外开页)。拿不到明确死亡信号即判活。"""
     page = ctx.new_page()
-    captured: dict = {"ret": None}
+    captured: dict = {"json": None}
 
     def _on_response(resp) -> None:
-        if f"{DETAIL_API}/" in resp.url and captured["ret"] is None:
+        if f"{DETAIL_API}/" in resp.url and captured["json"] is None:
             try:
-                captured["ret"] = resp.json().get("ret")
+                captured["json"] = resp.json()
             except Exception:
                 pass
 
@@ -37,13 +56,15 @@ def check_liveness(ctx, item_id: str, wait_ms: int = 2500) -> tuple[bool, str | 
         page.goto(_ITEM_URL.format(item_id), wait_until="domcontentloaded")
         page.wait_for_timeout(wait_ms)
     except Exception:
-        return False, None          # 打开失败 → 不判死
+        return False, None, None    # 打开失败 → 不判死, 无计数
     finally:
         page.close()
 
-    blob = _ret_blob(captured["ret"])
+    detail = captured["json"]
+    stats = _extract_stats(detail)
+    blob = _ret_blob((detail or {}).get("ret"))
     if "SUCCESS" in blob:
-        return False, None
+        return False, None, stats
     if any(m in blob for m in _DEAD_MARKERS):
-        return True, "已删除"
-    return False, None              # 不确定 → 保守判活
+        return True, "已删除", stats
+    return False, None, stats        # 不确定 → 保守判活

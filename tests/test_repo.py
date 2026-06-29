@@ -138,3 +138,14 @@ def test_list_favorites_includes_collection_and_sorts_dead_last():
     ids = [r.item_id for r in favs]
     assert set(ids) == {"f1", "f2"}     # source=favorite 即纳入(无需 favorited=True)
     assert ids[-1] == "f2"              # 死链排末尾
+
+
+def test_update_item_stats_fills_counts():
+    s = session()
+    repo.upsert_item_with_price(s, Item(item_id="x", title="t", url="u", price=1), source="search")
+    repo.update_item_stats(s, "x", browse_count=134, collect_count=3, want_count=5)
+    row = _row(s, "x")
+    assert (row.browse_count, row.collect_count, row.want_count) == (134, 3, 5)
+    repo.update_item_stats(s, "x", browse_count=200)   # None 的不覆盖
+    row = _row(s, "x")
+    assert (row.browse_count, row.collect_count, row.want_count) == (200, 3, 5)
