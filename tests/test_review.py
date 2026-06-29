@@ -109,14 +109,45 @@ def test_review_uses_configured_params(monkeypatch):
         captured.update(json)
 
         class R:
+            status_code = 200
             def raise_for_status(self): ...
-            def json(self): return {"choices": [{"message": {"content": '[{"i":0,"ok":true}]'}}]}
+            def json(self): return {"choices": [{"message": {"content": '{"verdicts":[{"i":0,"ok":true}]}'}}]}
         return R()
 
     monkeypatch.setattr(review.httpx, "post", fake_post)
     review.review_items(items, "必须M5", st)
     assert captured["temperature"] == 0.7 and captured["max_tokens"] == 512
     assert captured["messages"][0]["content"] == "自定义提示词"
+    assert captured["response_format"]["type"] == "json_schema"   # 默认带结构化输出
+
+
+def test_coerce_array_handles_shapes():
+    assert review._coerce_array('{"verdicts":[{"i":0,"ok":true}]}')[0]["ok"] is True  # 结构化
+    assert review._coerce_array('[{"i":0,"ok":false}]')[0]["ok"] is False             # 裸数组
+    assert review._coerce_array('好的:\n```json\n[{"i":0,"ok":true}]\n```')[0]["i"] == 0  # 夹文本
+
+
+def test_call_llm_falls_back_when_response_format_unsupported(monkeypatch):
+    calls = []
+
+    def fake_post(url, json, headers, timeout):
+        calls.append(json)
+
+        class R:
+            def raise_for_status(self):
+                if self.status_code >= 400:
+                    raise AssertionError("不该对 400 抛, 应已退回普通模式")
+            def json(self): return {"choices": [{"message": {"content": '[{"i":0,"ok":true}]'}}]}
+        r = R()
+        # 第一次(带 response_format)→ 400; 第二次(普通)→ 200
+        r.status_code = 400 if "response_format" in json else 200
+        return r
+
+    monkeypatch.setattr(review.httpx, "post", fake_post)
+    vs = review.review_items([Item(item_id="a", title="x", url="u", price=1)], "req", Settings())
+    assert vs[0].ok is True
+    assert len(calls) == 2                       # 先结构化(400) → 退回普通
+    assert "response_format" in calls[0] and "response_format" not in calls[1]
 
 
 # --- test_review(控制台「测试 LLM」按钮) ---

@@ -2,9 +2,10 @@
 
 端点: POST {review_base_url}/chat/completions (OpenAI Chat Completions 格式)。
 具体接口地址/密钥由本地配置(data/secret.env 的 XIANYU_REVIEW_BASE_URL /
-XIANYU_REVIEW_API_TOKEN)或控制台设置提供, 不写进仓库。不强制 response_format,
-故让模型输出 JSON 数组再自行解析。无要求/未启用/调用失败时**放行全部**(fail-open),
-避免把推荐误黑洞掉(用户仍能看到候选, 只是这轮没审)。
+XIANYU_REVIEW_API_TOKEN)或控制台设置提供, 不写进仓库。**优先用结构化输出**
+(response_format=json_schema): 让端点用语法约束解码, 从首 token 起就只能吐合规 JSON,
+既根治"没有 JSON 数组", 也能让推理模型跳过思考; 端点不支持时自动退回普通模式。
+无要求/未启用/调用失败时**放行全部**(fail-open), 避免把推荐误黑洞掉。
 """
 from __future__ import annotations
 
@@ -34,6 +35,37 @@ _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 def _strip_think(text: str | None) -> str:
     return _THINK_RE.sub("", text or "").strip()
+
+
+# 结构化输出 schema: 强制端点吐 {"verdicts":[{i,ok,reason}]}。OpenAI / LM Studio / vLLM
+# 等都认 response_format=json_schema; 老接口不认时 _call_llm 会自动退回普通模式。
+_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "verdicts",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "verdicts": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "i": {"type": "integer"},
+                            "ok": {"type": "boolean"},
+                            "reason": {"type": "string"},
+                        },
+                        "required": ["i", "ok", "reason"],
+                        "additionalProperties": False,
+                    },
+                }
+            },
+            "required": ["verdicts"],
+            "additionalProperties": False,
+        },
+    },
+}
 
 
 class ReviewVerdict(BaseModel):
@@ -91,7 +123,14 @@ def _call_llm(messages: list[dict], settings: Settings) -> str:
         "max_tokens": settings.review_max_tokens,
         "temperature": settings.review_temperature,
     }
-    resp = httpx.post(url, json=body, headers=headers, timeout=settings.review_timeout)
+
+    def _post(b: dict) -> httpx.Response:
+        return httpx.post(url, json=b, headers=headers, timeout=settings.review_timeout)
+
+    # 优先结构化输出; 端点不认 response_format(常见 400/404/422)就退回普通模式。
+    resp = _post({**body, "response_format": _RESPONSE_FORMAT})
+    if resp.status_code in (400, 404, 422):
+        resp = _post(body)
     resp.raise_for_status()
     msg = (resp.json().get("choices") or [{}])[0].get("message") or {}
     content = _strip_think(msg.get("content"))
@@ -101,8 +140,24 @@ def _call_llm(messages: list[dict], settings: Settings) -> str:
     return content
 
 
+def _coerce_array(content: str) -> list:
+    """取出裁决数组: 兼容结构化的 {"verdicts":[...]}、裸数组、或夹在文本里的 [...]。"""
+    s = (content or "").strip()
+    if not s:
+        raise ValueError("模型没有返回正文(content 为空) — 多半是推理模型把 token 用在思考上, 或 max_tokens 太小")
+    try:
+        obj = json.loads(s)
+    except json.JSONDecodeError:
+        return _extract_json_array(s)        # 不是规整 JSON → 从文本里抠出 [...]
+    if isinstance(obj, dict) and isinstance(obj.get("verdicts"), list):
+        return obj["verdicts"]               # 结构化输出
+    if isinstance(obj, list):
+        return obj                           # 裸数组
+    raise ValueError("JSON 里没有 verdicts 数组")
+
+
 def _parse_verdicts(content: str, n: int) -> list[ReviewVerdict]:
-    arr = _extract_json_array(content)
+    arr = _coerce_array(content)
     by_i: dict[int, dict] = {}
     for v in arr:
         if isinstance(v, dict) and "i" in v:
